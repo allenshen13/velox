@@ -23,6 +23,15 @@
 
 namespace facebook::velox::encoding {
 
+/// Describes the binary and encoded block sizes for a base encoding codec.
+struct CodecBlockSizes {
+  int binaryBlockByteSize;
+  int encodedBlockByteSize;
+};
+
+static constexpr CodecBlockSizes kBase64BlockSizes{3, 4};
+static constexpr CodecBlockSizes kBase32BlockSizes{5, 8};
+
 /// Shared utility functions for base encoding schemes (e.g. Base64, Base32).
 /// Provides common operations for padding detection, charset validation,
 /// reverse lookup, and encoded size calculation.
@@ -126,18 +135,17 @@ class BaseEncoderUtils {
   /// @param input The encoded input string (used to detect trailing padding).
   /// @param inputSize The length of the encoded input. Modified on return to
   ///   exclude padding characters.
-  /// @param binaryBlockByteSize Number of bytes per binary block
-  ///   (3 for Base64, 5 for Base32).
-  /// @param encodedBlockByteSize Number of characters per encoded block
-  ///   (4 for Base64, 8 for Base32).
+  /// @param blockSizes The binary and encoded block sizes for the codec.
   static Expected<size_t> calculateDecodedSize(
       std::string_view input,
       size_t& inputSize,
-      int binaryBlockByteSize,
-      int encodedBlockByteSize) {
+      const CodecBlockSizes& blockSizes) {
     if (inputSize == 0) {
       return 0;
     }
+
+    auto binaryBlockByteSize = blockSizes.binaryBlockByteSize;
+    auto encodedBlockByteSize = blockSizes.encodedBlockByteSize;
 
     // Check if the input string is padded.
     if (isPadded(input)) {
@@ -179,18 +187,17 @@ class BaseEncoderUtils {
   /// Calculates the encoded output size based on input size and block sizes.
   /// @param inputSize Size of the input data in bytes.
   /// @param includePadding Whether to include padding in the output.
-  /// @param binaryBlockByteSize Number of bytes per binary block
-  ///   (3 for Base64, 5 for Base32).
-  /// @param encodedBlockByteSize Number of characters per encoded block
-  ///   (4 for Base64, 8 for Base32).
+  /// @param blockSizes The binary and encoded block sizes for the codec.
   static size_t calculateEncodedSize(
       size_t inputSize,
       bool includePadding,
-      int binaryBlockByteSize,
-      int encodedBlockByteSize) {
+      const CodecBlockSizes& blockSizes) {
     if (inputSize == 0) {
       return 0;
     }
+
+    auto binaryBlockByteSize = blockSizes.binaryBlockByteSize;
+    auto encodedBlockByteSize = blockSizes.encodedBlockByteSize;
 
     // Calculate the output size assuming that we are including padding.
     size_t encodedSize =
